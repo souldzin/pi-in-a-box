@@ -7,6 +7,16 @@ set -e
 SCRIPT_NAME="$(basename "$0")"
 IMAGE_NAME="pi-in-a-box"
 
+# Function to show version
+show_version() {
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local SHA DATE
+  SHA=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  DATE=$(git -C "$SCRIPT_DIR" log -1 --format=%cI 2>/dev/null || echo "unknown")
+  echo "$SCRIPT_NAME $SHA ($DATE)"
+}
+
 # Function to show usage
 show_usage() {
   echo "Usage: $SCRIPT_NAME [PROJECT_PATH]"
@@ -18,6 +28,7 @@ show_usage() {
   echo ""
   echo "Options:"
   echo "  -h, --help      Show this help message"
+  echo "  -v, --version   Show version information"
   echo "  --build         Force rebuild of Docker image"
   echo "  --shell         Start bash shell instead of pi"
   echo "  --              Stop parsing $SCRIPT_NAME options; remaining args are passed to pi"
@@ -44,6 +55,10 @@ while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
     show_usage
+    exit 0
+    ;;
+  -v | --version)
+    show_version
     exit 0
     ;;
   --build)

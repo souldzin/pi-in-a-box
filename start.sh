@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_NAME="start.sh"
-IMAGE_NAME="pi-agent-hev"
+IMAGE_NAME="pi-in-a-box"
 
 # Function to show usage
 show_usage() {
@@ -21,18 +21,24 @@ show_usage() {
   echo "  -h, --help      Show this help message"
   echo "  --build         Force rebuild of Docker image"
   echo "  --shell         Start bash shell instead of pi"
+  echo "  --              Stop parsing start.sh options; remaining args are passed to pi"
+  echo ""
+  echo "Any arguments not consumed by $SCRIPT_NAME are forwarded to the pi command."
   echo ""
   echo "Examples:"
-  echo "  $SCRIPT_NAME                    # Mount current directory"
-  echo "  $SCRIPT_NAME ~/my-project       # Mount specific project"
-  echo "  $SCRIPT_NAME --build ~/project  # Rebuild image and mount project"
-  echo "  $SCRIPT_NAME --shell ~/project  # Start shell in container"
+  echo "  $SCRIPT_NAME                                # Mount current directory"
+  echo "  $SCRIPT_NAME ~/my-project                   # Mount specific project"
+  echo "  $SCRIPT_NAME --build ~/project              # Rebuild image and mount project"
+  echo "  $SCRIPT_NAME --shell ~/project              # Start shell in container"
+  echo "  $SCRIPT_NAME ~/project -- --model gpt-4     # Pass --model gpt-4 to pi"
+  echo "  $SCRIPT_NAME -- --skill my-skill            # Pass --skill to pi (current dir)"
 }
 
 # Default values
 PROJECT_PATH="$(pwd)"
 FORCE_BUILD=false
 START_SHELL=false
+PI_ARGS=()
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -48,6 +54,11 @@ while [[ $# -gt 0 ]]; do
   --shell)
     START_SHELL=true
     shift
+    ;;
+  --)
+    shift
+    PI_ARGS+=("$@")
+    break
     ;;
   -*)
     echo "Unknown option: $1"
@@ -99,11 +110,15 @@ fi
 
 # Determine command to run
 if [[ "$START_SHELL" == "true" ]]; then
-  DOCKER_CMD="bash"
+  DOCKER_CMD=("bash")
   echo "🐚 Starting interactive shell..."
 else
-  DOCKER_CMD="pi"
-  echo "🤖 Starting pi agent..."
+  DOCKER_CMD=("pi" "${PI_ARGS[@]}")
+  if [[ ${#PI_ARGS[@]} -gt 0 ]]; then
+    echo "🤖 Starting pi agent with args: ${PI_ARGS[*]}"
+  else
+    echo "🤖 Starting pi agent..."
+  fi
 fi
 
 # Run the container
@@ -116,6 +131,6 @@ docker run -it --rm \
   -e "HOME=/home/piuser" \
   -w "/project" \
   "$IMAGE_NAME" \
-  $DOCKER_CMD
+  "${DOCKER_CMD[@]}"
 
 echo "👋 pi session ended"

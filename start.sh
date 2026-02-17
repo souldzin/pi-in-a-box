@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-# start.sh - Launch pi coding agent in Docker with project mounting
-# Usage: start.sh [path/to/project]
+# Launch pi coding agent in Docker with project mounting
 
 set -e
 
-SCRIPT_NAME="start.sh"
+SCRIPT_NAME="$(basename "$0")"
 IMAGE_NAME="pi-in-a-box"
 
 # Function to show usage
@@ -21,7 +20,7 @@ show_usage() {
   echo "  -h, --help      Show this help message"
   echo "  --build         Force rebuild of Docker image"
   echo "  --shell         Start bash shell instead of pi"
-  echo "  --              Stop parsing start.sh options; remaining args are passed to pi"
+  echo "  --              Stop parsing $SCRIPT_NAME options; remaining args are passed to pi"
   echo ""
   echo "Any arguments not consumed by $SCRIPT_NAME are forwarded to the pi command."
   echo ""

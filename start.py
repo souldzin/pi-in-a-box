@@ -7,6 +7,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11
+    try:
+        import tomli as tomllib  # type: ignore[no-redef]
+    except ModuleNotFoundError:
+        tomllib = None  # type: ignore[assignment]
+
 SCRIPT_NAME = Path(__file__).name
 IMAGE_NAME = "pi-in-a-box"
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -76,6 +84,67 @@ def build_image() -> None:
         check=True,
     )
     print("✅ Docker image built successfully")
+
+
+def get_container_uid_gid(image: str, user: str = "piuser") -> tuple[int, int]:
+    """Query the UID and GID of *user* inside the Docker *image*."""
+    try:
+        out = subprocess.check_output(
+            ["docker", "run", "--rm", image, "id", "-u", user],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        uid = int(out)
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        uid = 1000
+
+    try:
+        out = subprocess.check_output(
+            ["docker", "run", "--rm", image, "id", "-g", user],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        gid = int(out)
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        gid = 1000
+
+    return uid, gid
+
+
+def load_ignore_paths(project_path: Path, container_uid: int = 1000, container_gid: int = 1000) -> list[str]:
+    """Read .piinabox.toml and return docker volume args that shadow ignored paths.
+
+    Each ignored path gets an anonymous empty volume mounted over the
+    corresponding location inside the container, preventing the host's
+    copy (e.g. .venv) from leaking in.
+    """
+    config_file = project_path / ".piinabox.toml"
+    if not config_file.is_file():
+        return []
+
+    if tomllib is None:
+        print(
+            "Warning: .piinabox.toml found but no TOML parser available. "
+            "Upgrade to Python ≥ 3.11 or install 'tomli'."
+        )
+        return []
+
+    with open(config_file, "rb") as f:
+        config = tomllib.load(f)
+
+    ignore_paths: list[str] = config.get("ignore-paths", [])
+    volume_args: list[str] = []
+    for p in ignore_paths:
+        # Strip leading/trailing slashes so we always get a clean relative path
+        clean = p.strip("/")
+        if not clean:
+            continue
+        container_path = f"/project/{clean}"
+        print(f"🚫 Ignoring path: {container_path}")
+        # Use tmpfs so the mount is owned by the container user (piuser),
+        # not root as with anonymous volumes.
+        volume_args.extend(["--tmpfs", f"{container_path}:uid={container_uid},gid={container_gid}"])
+    return volume_args
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -158,6 +227,9 @@ def main() -> None:
 
     # ---- Run the container --------------------------------------------
     home = Path.home()
+    container_uid, container_gid = get_container_uid_gid(IMAGE_NAME)
+    ignore_volume_args = load_ignore_paths(project_path, container_uid, container_gid)
+
     print(f"📁 Mounting: {project_path} -> /project")
     print("🏃 Running container...")
 
@@ -165,6 +237,7 @@ def main() -> None:
         [
             "docker", "run", "-it", "--rm",
             "-v", f"{project_path}:/project",
+            *ignore_volume_args,
             "-v", f"{home}/.pi:/home/piuser/.pi",
             "-e", "HOME=/home/piuser",
             "-w", "/project",

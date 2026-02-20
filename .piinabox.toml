@@ -1,0 +1,4 @@
+ignore-paths = [
+    ".venv",
+    ".test-ignore-paths"
+]

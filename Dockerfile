@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install mise (polyglot tool version manager)
+RUN curl https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
+
 # Install pi coding agent globally
 RUN npm install -g @mariozechner/pi-coding-agent
 

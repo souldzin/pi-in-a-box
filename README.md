@@ -87,6 +87,25 @@ pi-in-a-box --build ~/projects/my-app -- --model gpt-4
 
 Everything after `--` is passed directly to the `pi` command.
 
+## Configuration
+
+You can add a `.piinabox.toml` file to your project root to configure the container environment.
+
+### Ignoring Paths
+
+Use `ignore-paths` to list directories that should **not** be shared between your host and the container. Each ignored path gets an anonymous empty volume mounted over it inside the container, so the host and container versions stay completely independent.
+
+This is useful for environment-specific directories like `.venv`, or build output that may be incompatible between your host OS and the container's Linux environment.
+
+```toml
+# .piinabox.toml
+ignore-paths = [
+    ".venv"
+]
+```
+
+> **Note:** Parsing `.piinabox.toml` requires Python 3.11+ (which includes `tomllib`). On older versions you can `pip install tomli` as a fallback.
+
 ## How It Works
 
 The `start.sh` script:

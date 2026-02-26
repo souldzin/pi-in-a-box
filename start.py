@@ -143,7 +143,7 @@ def load_ignore_paths(project_path: Path, container_uid: int = 1000, container_g
         print(f"🚫 Ignoring path: {container_path}")
         # Use tmpfs so the mount is owned by the container user (piuser),
         # not root as with anonymous volumes.
-        volume_args.extend(["--tmpfs", f"{container_path}:uid={container_uid},gid={container_gid}"])
+        volume_args.extend(["--tmpfs", f"{container_path}:exec,uid={container_uid},gid={container_gid}"])
     return volume_args
 
 

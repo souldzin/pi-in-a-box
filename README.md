@@ -116,3 +116,7 @@ The `start.sh` script:
 3. **Mounts** your project directory to `/project` in the container
 4. **Mounts** your pi configuration from `~/.pi` to persist settings
 5. **Runs** pi in interactive mode within the project directory
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -4,6 +4,7 @@ Run the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages
 
 ## Requirements
 
+- Python 3 installed (3.11+ recommended for `.piinabox.toml` support)
 - Docker installed and running
 - Verified on **macOS only**
 

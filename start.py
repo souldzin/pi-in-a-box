@@ -111,7 +111,9 @@ def get_container_uid_gid(image: str, user: str = "piuser") -> tuple[int, int]:
     return uid, gid
 
 
-def load_ignore_paths(project_path: Path, container_uid: int = 1000, container_gid: int = 1000) -> list[str]:
+def load_ignore_paths(
+    project_path: Path, container_uid: int = 1000, container_gid: int = 1000
+) -> list[str]:
     """Read .piinabox.toml and return docker volume args that shadow ignored paths.
 
     Each ignored path gets an anonymous empty volume mounted over the
@@ -143,7 +145,12 @@ def load_ignore_paths(project_path: Path, container_uid: int = 1000, container_g
         print(f"🚫 Ignoring path: {container_path}")
         # Use tmpfs so the mount is owned by the container user (piuser),
         # not root as with anonymous volumes.
-        volume_args.extend(["--tmpfs", f"{container_path}:exec,uid={container_uid},gid={container_gid}"])
+        volume_args.extend(
+            [
+                "--tmpfs",
+                f"{container_path}:exec,uid={container_uid},gid={container_gid}",
+            ]
+        )
     return volume_args
 
 
@@ -160,7 +167,8 @@ def build_parser() -> argparse.ArgumentParser:
             f"  {SCRIPT_NAME} --build ~/project              # Rebuild image and mount project\n"
             f"  {SCRIPT_NAME} --shell ~/project              # Start shell in container\n"
             f"  {SCRIPT_NAME} ~/project -- --model gpt-4     # Pass --model gpt-4 to pi\n"
-            f"  {SCRIPT_NAME} -- --skill my-skill            # Pass --skill to pi (current dir)"
+            f"  {SCRIPT_NAME} -- --skill my-skill            # Pass --skill to pi (current dir)\n"
+            f"  {SCRIPT_NAME} --no-interactive --exec 'echo hello' ~/project  # Run a command non-interactively"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -170,9 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.getcwd(),
         help="Path to project directory to mount (defaults to current directory)",
     )
-    parser.add_argument(
-        "-v", "--version", action="version", version=get_version()
-    )
+    parser.add_argument("-v", "--version", action="version", version=get_version())
     parser.add_argument(
         "--build", action="store_true", help="Force rebuild of Docker image"
     )
@@ -180,6 +186,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--shell",
         action="store_true",
         help="Start bash shell instead of pi",
+    )
+    parser.add_argument(
+        "--exec",
+        metavar="CMD",
+        help="Execute a command in the container instead of starting pi",
+    )
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        help="Disable interactive mode (no TTY allocation)",
     )
     parser.add_argument(
         "pi_args",
@@ -215,7 +231,11 @@ def main() -> None:
         build_image()
 
     # ---- Determine container command ----------------------------------
-    if args.shell:
+    interactive = not args.no_interactive
+    if getattr(args, "exec", None):
+        docker_cmd = ["bash", "-c", args.exec]
+        print(f"🏃 Executing: {args.exec}")
+    elif args.shell:
         docker_cmd = ["bash"]
         print("🐚 Starting interactive shell...")
     else:
@@ -233,14 +253,23 @@ def main() -> None:
     print(f"📁 Mounting: {project_path} -> /project")
     print("🏃 Running container...")
 
+    sys.stdout.flush()
+    docker_run_args = ["-it"] if interactive else []
     result = subprocess.run(
         [
-            "docker", "run", "-it", "--rm",
-            "-v", f"{project_path}:/project",
+            "docker",
+            "run",
+            *docker_run_args,
+            "--rm",
+            "-v",
+            f"{project_path}:/project",
             *ignore_volume_args,
-            "-v", f"{home}/.pi:/home/piuser/.pi",
-            "-e", "HOME=/home/piuser",
-            "-w", "/project",
+            "-v",
+            f"{home}/.pi:/home/piuser/.pi",
+            "-e",
+            "HOME=/home/piuser",
+            "-w",
+            "/project",
             IMAGE_NAME,
             *docker_cmd,
         ],

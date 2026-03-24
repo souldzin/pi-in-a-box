@@ -218,6 +218,27 @@ def main() -> None:
         print(f"Error: Directory '{project_path}' does not exist")
         sys.exit(1)
 
+    home = Path.home().resolve()
+
+    # Safety: refuse to mount the home directory (or a parent of it) as /project.
+    # Doing so can lock files, confuse inotify watchers, and freeze programs.
+    if project_path == home or home.is_relative_to(project_path):
+        print(f"Error: Refusing to mount '{project_path}' as the project directory.")
+        print(
+            "Mounting your home directory (or a parent) into the container can cause "
+            "file locks, inotify storms, and freeze running programs."
+        )
+        print(
+            f"Please run from a specific project directory, or pass one as an argument."
+        )
+        sys.exit(1)
+
+    # Safety: refuse to mount filesystem root
+    if project_path == Path("/"):
+        print(f"Error: Refusing to mount '/' as the project directory.")
+        print("Please specify a specific project directory.")
+        sys.exit(1)
+
     print(f"🚀 Starting pi agent with project: {project_path}")
 
     # ---- Docker checks ------------------------------------------------
@@ -246,7 +267,6 @@ def main() -> None:
             print("🤖 Starting pi agent...")
 
     # ---- Run the container --------------------------------------------
-    home = Path.home()
     container_uid, container_gid = get_container_uid_gid(IMAGE_NAME)
     ignore_volume_args = load_ignore_paths(project_path, container_uid, container_gid)
 

@@ -20,6 +20,7 @@ This runs all tests automatically and reports results.
 | --------------------------- | ------------------------------------------------------------------------------ |
 | `test-user.sh`              | Running as `piuser`, not root                                                  |
 | `test-project-mount.sh`     | `/project` is mounted and writable                                             |
+| `test-setup.sh`             | The script command in `.piinabox.toml` works                                   |
 | `test-home-dir.sh`          | Home directory and `~/.pi` config are accessible and writable                  |
 | `test-tools.sh`             | Essential tools are installed (`pi`, `node`, `git`, `curl`, `python3`, `mise`) |
 | `test-ignore-paths-exec.sh` | tmpfs mounts for `ignore-paths` have `exec` permission                         |

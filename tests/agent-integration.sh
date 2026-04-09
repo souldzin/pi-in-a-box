@@ -17,11 +17,11 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # --- Options ---------------------------------------------------------------
 BUILD_ARG=""
 if [[ "${1:-}" == "--build" ]]; then
-    BUILD_ARG="--build"
+  BUILD_ARG="--build"
 fi
 
 # --- Run tests via start.sh ------------------------------------------------
-echo "🧪 Running agent integration tests..."
+echo "* Running agent integration tests..."
 
 TEST_CMD='for t in /project/tests/agent/test-*.sh; do echo "--- $t ---"; sh "$t"; done'
 
@@ -30,21 +30,21 @@ OUTPUT=$("$PROJECT_DIR/start.sh" $BUILD_ARG --no-interactive --exec "$TEST_CMD" 
 echo "$OUTPUT"
 
 # --- Check results ---------------------------------------------------------
-TOTAL=$(echo "$OUTPUT" | grep -c "PASSED\|FAILED" || true)
-PASSED=$(echo "$OUTPUT" | grep -c "✅ PASSED" || true)
-FAILED=$(echo "$OUTPUT" | grep -c "❌ FAILED" || true)
+TOTAL=$(echo "$OUTPUT" | grep -c "\[OK\]\|\[FAIL\]" || true)
+PASSED=$(echo "$OUTPUT" | grep -c "\[OK\]" || true)
+FAILED=$(echo "$OUTPUT" | grep -c "\[FAIL\]" || true)
 
 echo ""
 echo "--- Results: $PASSED/$TOTAL passed ---"
 
 if [[ "$FAILED" -gt 0 ]]; then
-    echo "❌ Integration tests FAILED"
-    exit 1
+  echo "[FAIL] Integration tests FAILED"
+  exit 1
 fi
 
 if [[ "$PASSED" -eq 0 ]]; then
-    echo "❌ No tests ran"
-    exit 1
+  echo "[FAIL] No tests ran"
+  exit 1
 fi
 
-echo "✅ All integration tests passed"
+echo "[OK] All integration tests passed"

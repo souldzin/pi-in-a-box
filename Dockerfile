@@ -23,6 +23,9 @@ RUN useradd -m -s /bin/bash piuser && \
 # Switch to non-root user
 USER piuser
 
+# Prevent Python from writing __pycache__ / .pyc files into the mounted project
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Set up the project mount point
 WORKDIR /project
 

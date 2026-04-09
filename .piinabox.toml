@@ -2,3 +2,4 @@ ignore-paths = [
     ".venv",
     ".test-ignore-paths"
 ]
+setup = "./tests/agent-setup.sh"

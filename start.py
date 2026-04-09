@@ -27,12 +27,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 class Config:
     project_path: Path
     ignore_paths: list[str]
+    env: dict[str, str]
     setup: str
 
     @staticmethod
     def try_parse(project_path: Path, values: dict[str, Any]) -> "Config":
         ignore_paths = values.get("ignore-paths", [])
         setup = values.get("setup", "")
+        env_args = values.get("env", {})
 
         if not isinstance(ignore_paths, list):
             ignore_paths = []
@@ -40,7 +42,15 @@ class Config:
         if not isinstance(setup, str):
             setup = ""
 
-        return Config(project_path=project_path, ignore_paths=ignore_paths, setup=setup)
+        if not isinstance(env_args, dict):
+            env_args = {}
+
+        return Config(
+            project_path=project_path,
+            ignore_paths=ignore_paths,
+            setup=setup,
+            env=env_args,
+        )
 
 
 def get_version() -> str:
@@ -277,6 +287,16 @@ def get_docker_cmd(args: argparse.Namespace, config: Config) -> list[str]:
     return ["bash", "-c", full_cmd]
 
 
+def get_env_args(config: Config) -> list[str]:
+    result = []
+
+    for k, v in config.env.items():
+        result.append("-e")
+        result.append(f"{k}={v}")
+
+    return result
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -333,6 +353,7 @@ def main() -> None:
     # ---- Run the container --------------------------------------------
     container_uid, container_gid = get_container_uid_gid(IMAGE_NAME)
     ignore_volume_args = load_ignore_paths(config, container_uid, container_gid)
+    env_args = get_env_args(config)
 
     print(f"* Mounting: {project_path} -> /project")
     print("* Running container...")
@@ -352,6 +373,7 @@ def main() -> None:
             f"{home}/.pi:/home/piuser/.pi",
             "-e",
             "HOME=/home/piuser",
+            *env_args,
             "-w",
             "/project",
             IMAGE_NAME,

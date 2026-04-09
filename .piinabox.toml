@@ -3,3 +3,4 @@ ignore-paths = [
     ".test-ignore-paths"
 ]
 setup = "./tests/agent-setup.sh"
+env.PIINABOX_TEST_ENV = "lorem-ipsum"

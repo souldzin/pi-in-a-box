@@ -18,6 +18,7 @@ This runs all tests automatically and reports results.
 
 | Test                        | What it checks                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------ |
+| `test-user.sh`              | Setting env in .piinabox works                                                 |
 | `test-user.sh`              | Running as `piuser`, not root                                                  |
 | `test-project-mount.sh`     | `/project` is mounted and writable                                             |
 | `test-setup.sh`             | The script command in `.piinabox.toml` works                                   |

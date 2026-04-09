@@ -92,6 +92,28 @@ Everything after `--` is passed directly to the `pi` command.
 
 You can add a `.piinabox.toml` file to your project root to configure the container environment.
 
+### Setup Script
+
+Use the `setup` key to specify a script that will be executed inside the container _before_ the main `pi` command (or `--exec` command). This is useful for installing dependencies or performing other setup tasks.
+
+```toml
+# .piinabox.toml
+setup = "./scripts/setup.sh"
+```
+
+The script will be executed with `bash -c "<your-setup-script> && <main-command>"`. You can skip running the setup script with the `--no-setup` command-line option.
+
+### Environment Variables
+
+Use the `env` section to define environment variables that will be passed into the container.
+
+```toml
+# .piinabox.toml
+[env]
+PYTHONDONTWRITEBYTECODE=1
+DEBUG_MODE = "true"
+```
+
 ### Ignoring Paths
 
 Use `ignore-paths` to list directories that should **not** be shared between your host and the container. Each ignored path gets an anonymous empty volume mounted over it inside the container, so the host and container versions stay completely independent.

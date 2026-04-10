@@ -2,7 +2,7 @@
 # Integration test: starts a pi-in-a-box container for THIS project
 # (via start.sh) and runs the agent test suite inside it.
 #
-# This goes through the full start.sh/start.py code path, so it
+# This goes through the full start.sh code path, so it
 # tests the actual container setup — mounts, ignore-paths, user, etc.
 #
 # Usage:

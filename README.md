@@ -16,7 +16,7 @@ Run the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages
 - Your project directory is mounted with full read/write access
 - The container has network access for API calls and package installations
 
-**AI DISCLAIMER:** This project was built with AI assistance, but fully reviewed and validated by a human :)
+**AI DISCLAIMER:** This project was built with AI assistance. All AI contributions have been fully reviewed and validated by a human :)
 
 ## Installation
 
@@ -127,11 +127,30 @@ ignore-paths = [
 ]
 ```
 
-> **Note:** Parsing `.piinabox.toml` requires Python 3.11+ (which includes `tomllib`). On older versions you can `pip install tomli` as a fallback.
+### Persistent Container
+
+By default, `pi-in-a-box` runs an ephemeral Docker container that is removed after each session. You can configure a named, persistent container by adding a `[container]` section and `name` key to your `.piinabox.toml` file.
+
+```toml
+# .piinabox.toml
+[container]
+name = "my-project-pi"
+```
+
+When `container.name` is set:
+
+- A hash of the configuration is added to `container.name` for the actual container name
+  (example: `piinabox_my_fun_project_62473a43`).
+- If the named container does not exist, a new one will be created.
+- If the named container exists and is stopped, it will be started.
+- If the named container exists and is running, the command will be executed within the existing container.
+- Outdated stopped containers with the same prefix will be automatically removed.
+
+**Important Note:** If you modify your `piinabox.toml` (e.g., change `ignore-paths` or `env` variables) while a persistent container is running, the running container will continue to use its initial configuration. To apply new configuration, you will need to stop and remove the container manually.
 
 ## How It Works
 
-The `start.sh` script:
+The `start.sh` script invokes the python module which:
 
 1. **Validates** the project directory exists
 2. **Builds** the Docker image if needed (or forced with `--build`)

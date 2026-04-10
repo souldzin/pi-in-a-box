@@ -9,14 +9,18 @@ Integration tests that run **inside** the container to verify the pi-in-a-box en
 
 ## Running all tests
 
+From the project root:
+
 ```bash
-sh tests/agent-integration.sh
+for t in ./tests/agent/test-*.sh; do echo "--- $t ---"; sh "$t"; done
 ```
 
 ## Running a specific test
 
+From the project root:
+
 ```bash
-sh tests/agent/test-ignore-paths-exec.sh
+sh ./tests/agent/test-ignore-paths-exec.sh
 ```
 
 ## Available tests

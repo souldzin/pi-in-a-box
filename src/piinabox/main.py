@@ -255,7 +255,7 @@ def main() -> None:
         IMAGE_NAME,
         *docker_cmd,
     ]
-    runtime_hash = hash_list(["IMAGE", docker_image.id, "ARGS", *docker_args])
+    runtime_hash = hash_list(["IMAGE", docker_image.id, "ARGS", *docker_args])[:8]
     strategy = get_execution_strategy(config, runtime_hash)
 
     result = strategy.execute(docker_args)

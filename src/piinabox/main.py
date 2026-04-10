@@ -3,105 +3,21 @@
 
 import argparse
 import os
-import subprocess
 import shlex
 import sys
-from dataclasses import dataclass
+import hashlib
 from pathlib import Path
-from typing import Any
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python < 3.11
-    try:
-        import tomli as tomllib  # type: ignore[no-redef]
-    except ModuleNotFoundError:
-        tomllib = None  # type: ignore[assignment]
-
-SCRIPT_NAME = Path(__file__).name
-IMAGE_NAME = "pi-in-a-box"
-SCRIPT_DIR = Path(__file__).resolve().parent
+from piinabox import docker
+from piinabox.version import get_version
+from piinabox.constants import SCRIPT_DIR, SCRIPT_NAME, IMAGE_NAME
+from piinabox.config import Config, load_config
+from piinabox.execute import get_execution_strategy
 
 
-@dataclass
-class Config:
-    project_path: Path
-    ignore_paths: list[str]
-    env: dict[str, str]
-    setup: str
-
-    @staticmethod
-    def try_parse(project_path: Path, values: dict[str, Any]) -> "Config":
-        ignore_paths = values.get("ignore-paths", [])
-        setup = values.get("setup", "")
-        env_args = values.get("env", {})
-
-        if not isinstance(ignore_paths, list):
-            ignore_paths = []
-
-        if not isinstance(setup, str):
-            setup = ""
-
-        if not isinstance(env_args, dict):
-            env_args = {}
-
-        return Config(
-            project_path=project_path,
-            ignore_paths=ignore_paths,
-            setup=setup,
-            env=env_args,
-        )
-
-
-def get_version() -> str:
-    """Return version string from git info."""
-    try:
-        sha = subprocess.check_output(
-            ["git", "-C", str(SCRIPT_DIR), "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        sha = "unknown"
-
-    try:
-        date = subprocess.check_output(
-            ["git", "-C", str(SCRIPT_DIR), "log", "-1", "--format=%cI"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        date = "unknown"
-
-    return f"{SCRIPT_NAME} {sha} ({date})"
-
-
-def docker_is_running() -> bool:
-    """Check whether the Docker daemon is reachable."""
-    try:
-        subprocess.run(
-            ["docker", "info"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-
-def image_exists(name: str) -> bool:
-    """Return True if a Docker image with *name* is available locally."""
-    try:
-        subprocess.run(
-            ["docker", "image", "inspect", name],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+def hash_list(values: list[str]) -> str:
+    raw = "|".join(values).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
 
 
 def build_image() -> None:
@@ -112,55 +28,13 @@ def build_image() -> None:
         print(f"Please ensure Dockerfile is in the same directory as {SCRIPT_NAME}")
         sys.exit(1)
 
-    subprocess.run(
-        ["docker", "build", "-t", IMAGE_NAME, "-f", str(dockerfile), str(SCRIPT_DIR)],
-        check=True,
+    docker.build_image(
+        image_name=IMAGE_NAME,
+        dockerfile=str(dockerfile),
+        dockerfile_dir=str(SCRIPT_DIR),
     )
+
     print("* Docker image built successfully")
-
-
-def get_container_uid_gid(image: str, user: str = "piuser") -> tuple[int, int]:
-    """Query the UID and GID of *user* inside the Docker *image*."""
-    try:
-        out = subprocess.check_output(
-            ["docker", "run", "--rm", image, "id", "-u", user],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-        uid = int(out)
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-        uid = 1000
-
-    try:
-        out = subprocess.check_output(
-            ["docker", "run", "--rm", image, "id", "-g", user],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-        gid = int(out)
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-        gid = 1000
-
-    return uid, gid
-
-
-def load_config(project_path: Path) -> Config:
-    config_file = project_path / ".piinabox.toml"
-
-    if not config_file.is_file():
-        return Config.try_parse(project_path, {})
-
-    if tomllib is None:
-        print(
-            "Warning: .piinabox.toml found but no TOML parser available. "
-            "Upgrade to Python ≥ 3.11 or install 'tomli'."
-        )
-        return Config.try_parse(project_path, {})
-
-    with open(config_file, "rb") as f:
-        config_values = tomllib.load(f)
-
-    return Config.try_parse(project_path, config_values)
 
 
 def load_ignore_paths(
@@ -311,6 +185,8 @@ def main() -> None:
         sys.exit(1)
 
     home = Path.home().resolve()
+    docker_image = docker.get_image(IMAGE_NAME)
+    should_build = args.build or not docker_image
 
     # Safety: refuse to mount the home directory (or a parent of it) as /project.
     # Doing so can lock files, confuse inotify watchers, and freeze programs.
@@ -334,14 +210,19 @@ def main() -> None:
     print(f"* Starting pi agent with project: {project_path}")
 
     # ---- Docker checks ------------------------------------------------
-    if not docker_is_running():
+    if not docker.docker_is_running():
         print("Error: Docker is not running or not accessible")
         print("Please start Docker and try again")
         sys.exit(1)
 
-    if args.build or not image_exists(IMAGE_NAME):
+    if should_build:
         print("* Building Docker image...")
         build_image()
+
+    docker_image = docker.get_image(IMAGE_NAME)
+    if not docker_image:
+        print(f"Error: Could not find docker image {IMAGE_NAME} on system.")
+        sys.exit(1)
 
     # ---- Load config --------------------------------------------------
     config = load_config(project_path)
@@ -351,39 +232,33 @@ def main() -> None:
     docker_cmd = get_docker_cmd(args, config)
 
     # ---- Run the container --------------------------------------------
-    container_uid, container_gid = get_container_uid_gid(IMAGE_NAME)
+    container_uid, container_gid = docker.get_container_uid_gid(IMAGE_NAME)
     ignore_volume_args = load_ignore_paths(config, container_uid, container_gid)
     env_args = get_env_args(config)
 
     print(f"* Mounting: {project_path} -> /project")
-    print("* Running container...")
 
     sys.stdout.flush()
-    docker_run_args = ["-it"] if interactive else []
-    result = subprocess.run(
-        [
-            "docker",
-            "run",
-            *docker_run_args,
-            "--rm",
-            "-v",
-            f"{project_path}:/project",
-            *ignore_volume_args,
-            "-v",
-            f"{home}/.pi:/home/piuser/.pi",
-            "-e",
-            "HOME=/home/piuser",
-            *env_args,
-            "-w",
-            "/project",
-            IMAGE_NAME,
-            *docker_cmd,
-        ],
-    )
+
+    docker_args: list[str] = [
+        *(["-i", "-t"] if interactive else []),
+        "-v",
+        f"{project_path}:/project",
+        *ignore_volume_args,
+        "-v",
+        f"{home}/.pi:/home/piuser/.pi",
+        "-e",
+        "HOME=/home/piuser",
+        *env_args,
+        "-w",
+        "/project",
+        IMAGE_NAME,
+        *docker_cmd,
+    ]
+    runtime_hash = hash_list(["IMAGE", docker_image.id, "ARGS", *docker_args])[:8]
+    strategy = get_execution_strategy(config, runtime_hash)
+
+    result = strategy.execute(docker_args)
 
     print("[pi session ended]")
-    sys.exit(result.returncode)
-
-
-if __name__ == "__main__":
-    main()
+    sys.exit(result.get_return_code())

@@ -3,4 +3,6 @@
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-exec python3 "$SCRIPT_DIR/start.py" "$@"
+
+export PYTHONPATH=$PYTHONPATH:${SCRIPT_DIR}/src
+exec python3 -m piinabox "$@"

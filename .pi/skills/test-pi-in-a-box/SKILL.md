@@ -9,14 +9,18 @@ Integration tests that run **inside** the container to verify the pi-in-a-box en
 
 ## Running all tests
 
+From the project root:
+
 ```bash
-for t in /project/tests/agent/test-*.sh; do echo "--- $t ---"; sh "$t"; done
+for t in ./tests/agent/test-*.sh; do echo "--- $t ---"; sh "$t"; done
 ```
 
 ## Running a specific test
 
+From the project root:
+
 ```bash
-sh /project/tests/agent/test-ignore-paths-exec.sh
+sh ./tests/agent/test-ignore-paths-exec.sh
 ```
 
 ## Available tests
@@ -25,8 +29,8 @@ See [tests/agent/README.md](../../../tests/agent/README.md) for the full list of
 
 ## Interpreting results
 
-- `✅ PASSED` — the check succeeded.
-- `❌ FAILED` — something is wrong with the container setup. Diagnostic info is printed. The fix is likely in `start.py` which generates the `docker run` command.
+- `[OK]` — the check succeeded.
+- `[FAIL]` — something is wrong with the container setup. Diagnostic info is printed.
 
 ## Adding tests
 

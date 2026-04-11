@@ -1,5 +1,7 @@
 # pi-in-a-box
 
+> **Deprecated:** This project has been replaced by [silentshell](https://github.com/souldzin/silentshell), which supports launching any coding agent — not just pi. New development happens there.
+
 Run the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) in a Docker container with your project directory mounted inside it. This gives you _some_ peace-of-mind while your agent runs in YOLO-mode.
 
 ## Requirements

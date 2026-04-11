@@ -172,6 +172,13 @@ def get_env_args(config: Config) -> list[str]:
 
 
 def main() -> None:
+    print(
+        "=================================\n"
+        "NOTE: pi-in-a-box is deprecated.\n"
+        "Replaced by silentshell (https://github.com/souldzin/silentshell).\n"
+        "================================="
+    )
+
     parser = build_parser()
     args = parser.parse_args()
 
